@@ -394,6 +394,14 @@
             overflow: hidden;
             text-overflow: ellipsis;
             min-width: 100px;
+            flex: 1;
+        }
+        
+        /* Вторая часть шапки */
+        .header-second {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
         
         /* Контейнер поиска */
@@ -460,21 +468,15 @@
         
         /* Контейнер сортировки */
         .sort-container {
+            flex: 1;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
-        }
-        
-        /* Метка сортировки */
-        .sort-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
         }
         
         /* Выбор сортировки */
         .sort-select {
-            padding: 0.375rem 0.75rem;
+            width: 100%;
+            padding: 0.5rem 0.75rem;
             border: 1px solid var(--border-color);
             border-radius: 0.375rem;
             font-size: 0.875rem;
@@ -1299,6 +1301,13 @@
                 width: 250px;
                 right: 5rem;
             }
+            .header-second {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .search-container, .sort-container {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -1369,6 +1378,11 @@
                         <i class="fas fa-bars"></i>
                     </button>
                     <h1 class="current-category" id="current-category">Мои идеи</h1>
+                    <button class="theme-toggle" id="theme-toggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+                <div class="header-second">
                     <div class="search-container" id="search-container">
                         <i class="fas fa-search search-icon"></i>
                         <input type="text" class="search-input" id="search-input" placeholder="Поиск идей...">
@@ -1376,18 +1390,14 @@
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <button class="theme-toggle" id="theme-toggle">
-                        <i class="fas fa-moon"></i>
-                    </button>
-                </div>
-                <div class="sort-container">
-                    <span class="sort-label">Сортировка:</span>
-                    <select class="sort-select" id="sort-select">
-                        <option value="newest">Сначала новые</option>
-                        <option value="oldest">Сначала старые</option>
-                        <option value="name">По названию</option>
-                        <option value="category">По категории</option>
-                    </select>
+                    <div class="sort-container">
+                        <select class="sort-select" id="sort-select">
+                            <option value="newest">Сначала новые</option>
+                            <option value="oldest">Сначала старые</option>
+                            <option value="name">По названию</option>
+                            <option value="category">По категории</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="filter-container" id="filter-container">
                     <span class="filter-label">Фильтр по тегу:</span>
@@ -1425,7 +1435,7 @@
         
         <!-- Быстрое добавление идеи -->
         <div class="quick-add" id="quick-add">
-            <input type="text" class="quick-add-input" id="quick-add-input" placeholder="Быстрая идея...">
+            <input type="text" class="quick-add-input" id="quick-add-input" placeholder="Описание идеи...">
             <div class="quick-add-actions">
                 <button class="btn btn-secondary" id="quick-add-cancel">Отмена</button>
                 <button class="btn btn-primary" id="quick-add-save">Сохранить</button>
@@ -1469,7 +1479,7 @@
                         <div class="image-upload-buttons">
                             <div class="image-upload-btn" id="camera-btn">
                                 <i class="fas fa-camera"></i>
-                                <span>Фотография</span>
+                                <span>Сделать фото</span>
                             </div>
                             <div class="image-upload-btn" id="gallery-btn">
                                 <i class="fas fa-images"></i>
@@ -1478,7 +1488,7 @@
                         </div>
                         <img id="image-preview" class="image-preview" style="display: none;">
                         <input type="file" id="idea-image" accept="image/*" style="display: none;">
-                        <input type="file" id="idea-camera" accept="image/*" capture="camera" style="display: none;">
+                        <input type="file" id="idea-camera" accept="image/*" capture="environment" style="display: none;">
                     </div>
                 </form>
             </div>
@@ -1936,6 +1946,7 @@
                 this.ignoreNextClick = false;
                 this.isFabClickProcessing = false;
                 this.lastFabClickTime = 0;
+                this.hasMoved = false; // Флаг для отслеживания перемещения FAB
             }
             
             // Инициализация UI
@@ -2196,9 +2207,9 @@
                 }
                 
                 // Если было долгое нажатие (но не перетаскивание)
-                if (this.isLongPress) {
+                if (this.isLongPress && !this.hasMoved) {
                     this.isLongPress = false;
-                    // Показываем быстрое добавление при долгом нажатии
+                    // Показываем быстрое добавление при долгом нажатии без перемещения
                     this.toggleQuickAdd();
                     return;
                 }
@@ -2232,12 +2243,12 @@
             
             // Сохранение быстрой идеи
             saveQuickIdea() {
-                const title = this.quickAddInput.value.trim();
-                if (!title) return;
+                const content = this.quickAddInput.value.trim();
+                if (!content) return;
                 
                 this.ideaManager.addIdea({
-                    title,
-                    content: '',
+                    title: 'Быстрая идея',
+                    content: content,
                     category: null,
                     tags: ['Быстро'],
                     image: null
@@ -2368,6 +2379,7 @@
             startFabDrag(clientX, clientY) {
                 this.isLongPress = false;
                 this.ignoreNextClick = false;
+                this.hasMoved = false; // Сбрасываем флаг перемещения
                 
                 // Устанавливаем таймер для определения долгого нажатия
                 this.longPressTimer = setTimeout(() => {
@@ -2388,6 +2400,9 @@
             // Перетаскивание FAB
             dragFab(clientX, clientY) {
                 if (!this.isDragging) return;
+                
+                // Отмечаем, что было перемещение
+                this.hasMoved = true;
                 
                 // Вычисляем смещение
                 const deltaX = clientX - this.dragStartX;
@@ -2478,6 +2493,7 @@
                 this.ignoreNextClick = false;
                 this.isLongPress = false;
                 this.lastFabClickTime = 0;
+                this.hasMoved = false;
                 
                 if (this.longPressTimer) {
                     clearTimeout(this.longPressTimer);
