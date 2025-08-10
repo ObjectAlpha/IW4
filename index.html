@@ -1488,7 +1488,7 @@
                         </div>
                         <img id="image-preview" class="image-preview" style="display: none;">
                         <input type="file" id="idea-image" accept="image/*" style="display: none;">
-                        <input type="file" id="idea-camera" accept="image/*" capture="environment" style="display: none;">
+                        <input type="file" id="idea-camera" accept="image/*" capture="camera" style="display: none;">
                     </div>
                 </form>
             </div>
@@ -2116,7 +2116,7 @@
                 
                 // Кнопки загрузки изображения
                 this.cameraBtn.addEventListener('click', () => {
-                    this.ideaCamera.click();
+                    this.openCamera();
                 });
                 
                 this.galleryBtn.addEventListener('click', () => {
@@ -2184,6 +2184,28 @@
                 });
             }
             
+            // Открытие камеры
+            openCamera() {
+                // Проверяем поддержку getUserMedia
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    // Запрашиваем доступ к камере
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                        .then((stream) => {
+                            // Если доступ получен, останавливаем поток и открываем выбор файла
+                            stream.getTracks().forEach(track => track.stop());
+                            this.ideaCamera.click();
+                        })
+                        .catch((err) => {
+                            console.error('Ошибка доступа к камере:', err);
+                            // Если не удалось получить доступ, просто открываем выбор файла
+                            this.ideaCamera.click();
+                        });
+                } else {
+                    // Если getUserMedia не поддерживается, просто открываем выбор файла
+                    this.ideaCamera.click();
+                }
+            }
+            
             // Обработка клика FAB с защитой от случайных нажатий
             handleFabClick(e) {
                 e.preventDefault();
@@ -2206,25 +2228,34 @@
                     return;
                 }
                 
-                // Если было долгое нажатие (но не перетаскивание)
-                if (this.isLongPress && !this.hasMoved) {
+                // Если было долгое нажатие
+                if (this.isLongPress) {
                     this.isLongPress = false;
-                    // Показываем быстрое добавление при долгом нажатии без перемещения
+                    
+                    // Если было перемещение, ничего не делаем
+                    if (this.hasMoved) {
+                        return;
+                    }
+                    
+                    // Если не было перемещения, показываем быстрое добавление
                     this.toggleQuickAdd();
                     return;
                 }
                 
-                // Устанавливаем флаг обработки клика
-                this.isFabClickProcessing = true;
-                this.lastFabClickTime = currentTime;
-                
-                // Открываем модальное окно
-                this.openIdeaModal();
-                
-                // Сбрасываем флаг после небольшой задержки
-                setTimeout(() => {
-                    this.isFabClickProcessing = false;
-                }, 500);
+                // Если было обычное нажатие (не долгое) и не было перемещения
+                if (!this.hasMoved) {
+                    // Устанавливаем флаг обработки клика
+                    this.isFabClickProcessing = true;
+                    this.lastFabClickTime = currentTime;
+                    
+                    // Открываем модальное окно
+                    this.openIdeaModal();
+                    
+                    // Сбрасываем флаг после небольшой задержки
+                    setTimeout(() => {
+                        this.isFabClickProcessing = false;
+                    }, 500);
+                }
             }
             
             // Переключение быстрого добавления
@@ -2657,7 +2688,7 @@
                 
                 // Автоматическое заполнение полей, если они пустые
                 const title = titleInput.value.trim() || 'Новая идея';
-                const content = contentInput.value.trim() || 'Что нибудь когда нибудь придумаем';
+                const content = contentInput.value.trim() || 'Что нибудь когда нибудь придумам';
                 const category = document.getElementById('idea-category').value;
                 const tags = this.appState.tags.length > 0 ? [...this.appState.tags] : ['Быстро'];
                 
