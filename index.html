@@ -1488,7 +1488,8 @@
                         </div>
                         <img id="image-preview" class="image-preview" style="display: none;">
                         <input type="file" id="idea-image" accept="image/*" style="display: none;">
-                        <input type="file" id="idea-camera" accept="image/*" capture="environment" style="display: none;">
+                        <!-- Изменение атрибута capture для корректной работы с основной камерой -->
+                        <input type="file" id="idea-camera" accept="image/*" capture="camera" style="display: none;">
                     </div>
                 </form>
             </div>
@@ -2184,9 +2185,10 @@
                 });
             }
             
-            // Открытие камеры
+            // Открытие камеры - исправленный метод для корректной работы с основной камерой
             openCamera() {
-                // Просто открываем выбор файла с основной камеры
+                // Программно активируем скрытый input с атрибутом capture="camera"
+                // Это открывает интерфейс камеры устройства вместо галереи
                 this.ideaCamera.click();
             }
             
