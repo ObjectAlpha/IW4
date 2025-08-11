@@ -76,6 +76,8 @@
             transform: translateX(-100%);
             transition: transform 0.3s ease;
             z-index: 1000;
+            display: flex;
+            flex-direction: column;
         }
         
         /* Открытое состояние боковой панели */
@@ -1234,6 +1236,16 @@
             object-fit: contain;
         }
         
+        /* Информация о версии */
+        .version-info {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-top: auto;
+            padding-top: 1rem;
+            opacity: 0.7;
+        }
+        
         /* Адаптивный дизайн для мобильных устройств */
         @media (max-width: 768px) {
             .sidebar {
@@ -1243,7 +1255,7 @@
             .sidebar.open {
                 width: var(--sidebar-width);
             }
-            .logo span, .sidebar-title, .sidebar-item span, .category-name span, .category-count, .category-actions {
+            .logo span, .sidebar-title, .sidebar-item span, .category-name span, .category-count, .category-actions, .version-info {
                 display: none;
             }
             .sidebar.open .logo span, 
@@ -1251,7 +1263,8 @@
             .sidebar.open .sidebar-item span, 
             .sidebar.open .category-name span, 
             .sidebar.open .category-count, 
-            .sidebar.open .category-actions {
+            .sidebar.open .category-actions,
+            .sidebar.open .version-info {
                 display: block;
             }
             .logo {
@@ -1368,6 +1381,7 @@
                 </button>
                 <input type="file" id="import-file" accept=".json" style="display: none;">
             </div>
+            <div class="version-info" id="version-info">Загрузка...</div>
         </aside>
         
         <!-- Основной контент -->
@@ -1489,7 +1503,7 @@
                         <img id="image-preview" class="image-preview" style="display: none;">
                         <input type="file" id="idea-image" accept="image/*" style="display: none;">
                         <!-- Изменение атрибута capture для корректной работы с основной камерой -->
-                        <input type="file" id="idea-camera" accept="image/*" capture="camera" style="display: none;">
+                        <input type="file" id="idea-camera" accept="image/*" capture="environment" style="display: none;">
                     </div>
                 </form>
             </div>
@@ -1567,6 +1581,7 @@
                 this.sidebarOpen = false;
                 this.sortBy = 'newest';
                 this.theme = 'light';
+                this.version = '0.0.0';
             }
             
             // Загрузка данных из localStorage
@@ -1737,6 +1752,22 @@
             // Подсчет архивных идей
             getArchivedIdeasCount() {
                 return this.ideas.filter(idea => idea.archived).length;
+            }
+            
+            // Загрузка версии из файла
+            async loadVersion() {
+                try {
+                    const response = await fetch('version.txt');
+                    if (!response.ok) {
+                        throw new Error('Version file not found');
+                    }
+                    this.version = await response.text();
+                    return this.version.trim();
+                } catch (error) {
+                    console.error('Error loading version:', error);
+                    this.version = '0.0.0';
+                    return this.version;
+                }
             }
         }
         
@@ -1935,6 +1966,7 @@
                 this.ideaImage = document.getElementById('idea-image');
                 this.ideaCamera = document.getElementById('idea-camera');
                 this.imagePreview = document.getElementById('image-preview');
+                this.versionInfo = document.getElementById('version-info');
                 
                 // Флаги для управления состоянием FAB
                 this.isDragging = false;
@@ -1951,7 +1983,10 @@
             }
             
             // Инициализация UI
-            init() {
+            async init() {
+                // Загружаем версию перед инициализацией
+                await this.loadVersion();
+                
                 this.setupEventListeners();
                 this.renderCategories();
                 this.renderIdeas();
@@ -1963,6 +1998,12 @@
                 this.setupFabDragging();
                 this.setupOrientationChange();
                 this.updateThemeIcon();
+            }
+            
+            // Загрузка версии
+            async loadVersion() {
+                const version = await this.appState.loadVersion();
+                this.versionInfo.textContent = `v${version}`;
             }
             
             // Настройка обработчиков событий
@@ -2185,11 +2226,19 @@
                 });
             }
             
-            // Открытие камеры - исправленный метод для корректной работы с основной камерой
+            // Открытие камеры - улучшенный метод для корректной работы с основной камерой
             openCamera() {
-                // Программно активируем скрытый input с атрибутом capture="camera"
-                // Это открывает интерфейс камеры устройства вместо галереи
-                this.ideaCamera.click();
+                // Проверяем поддержку API медиаустройств
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    // Программно активируем скрытый input с атрибутом capture="environment"
+                    // Это открывает интерфейс камеры устройства вместо галереи
+                    // Используем environment для основной камеры (не фронтальной)
+                    this.ideaCamera.setAttribute('capture', 'environment');
+                    this.ideaCamera.click();
+                } else {
+                    // Если API не поддерживается, используем стандартный метод
+                    this.ideaCamera.click();
+                }
             }
             
             // Обработка клика FAB с защитой от случайных нажатий
@@ -3293,9 +3342,9 @@
         }
         
         // Инициализация приложения
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             const appState = new AppState();
-            appState.loadFromStorage();
+            await appState.loadFromStorage();
             
             const ideaManager = new IdeaManager(appState);
             const categoryManager = new CategoryManager(appState);
@@ -3304,7 +3353,7 @@
             // Делаем uiManager доступным глобально для обработчиков событий в HTML
             window.uiManager = uiManager;
             
-            uiManager.init();
+            await uiManager.init();
             
             // Восстанавливаем позицию FAB после инициализации
             uiManager.restoreFabPosition();
