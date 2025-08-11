@@ -1491,10 +1491,6 @@
                     <div class="form-group">
                         <label class="form-label">Изображение</label>
                         <div class="image-upload-buttons">
-                            <div class="image-upload-btn" id="camera-btn">
-                                <i class="fas fa-camera"></i>
-                                <span>Сделать фото</span>
-                            </div>
                             <div class="image-upload-btn" id="gallery-btn">
                                 <i class="fas fa-images"></i>
                                 <span>Из галереи</span>
@@ -1502,8 +1498,6 @@
                         </div>
                         <img id="image-preview" class="image-preview" style="display: none;">
                         <input type="file" id="idea-image" accept="image/*" style="display: none;">
-                        <!-- Изменение атрибута capture для корректной работы с основной камерой -->
-                        <input type="file" id="idea-camera" accept="image/*" capture="environment" style="display: none;">
                     </div>
                 </form>
             </div>
@@ -1961,10 +1955,8 @@
                 this.quickAddInput = document.getElementById('quick-add-input');
                 this.quickAddCancel = document.getElementById('quick-add-cancel');
                 this.quickAddSave = document.getElementById('quick-add-save');
-                this.cameraBtn = document.getElementById('camera-btn');
                 this.galleryBtn = document.getElementById('gallery-btn');
                 this.ideaImage = document.getElementById('idea-image');
-                this.ideaCamera = document.getElementById('idea-camera');
                 this.imagePreview = document.getElementById('image-preview');
                 this.versionInfo = document.getElementById('version-info');
                 
@@ -2156,24 +2148,13 @@
                     }
                 });
                 
-                // Кнопки загрузки изображения
-                this.cameraBtn.addEventListener('click', () => {
-                    this.openCamera();
-                });
-                
+                // Кнопка загрузки изображения из галереи
                 this.galleryBtn.addEventListener('click', () => {
                     this.ideaImage.click();
                 });
                 
                 // Загрузка изображения
                 this.ideaImage.addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        this.processImage(file);
-                    }
-                });
-                
-                this.ideaCamera.addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (file) {
                         this.processImage(file);
@@ -2224,21 +2205,6 @@
                         this.closeQuickAdd();
                     }
                 });
-            }
-            
-            // Открытие камеры - улучшенный метод для корректной работы с основной камерой
-            openCamera() {
-                // Проверяем поддержку API медиаустройств
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    // Программно активируем скрытый input с атрибутом capture="environment"
-                    // Это открывает интерфейс камеры устройства вместо галереи
-                    // Используем environment для основной камеры (не фронтальной)
-                    this.ideaCamera.setAttribute('capture', 'environment');
-                    this.ideaCamera.click();
-                } else {
-                    // Если API не поддерживается, используем стандартный метод
-                    this.ideaCamera.click();
-                }
             }
             
             // Обработка клика FAB с защитой от случайных нажатий
