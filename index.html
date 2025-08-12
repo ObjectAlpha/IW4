@@ -2908,61 +2908,99 @@
             }
             
             // Экспорт данных
-            exportData() {
-                const data = {
-                    ideas: this.appState.ideas,
-                    categories: this.appState.categories,
-                    exportDate: new Date().toISOString()
-                };
-                
-                const dataStr = JSON.stringify(data, null, 2);
-                const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(dataBlob);
-                link.download = 'ideas_backup_' + new Date().toISOString().split('T')[0] + '.json';
-                link.click();
-                
-                this.showToast('Данные успешно экспортированы');
-            }
+		// Экспорт данных c учетом Android WebView
+		exportData() {
+		    const data = {
+		        ideas: this.appState.ideas,
+		        categories: this.appState.categories,
+		        exportDate: new Date().toISOString()
+		    };
+		
+		    const dataStr = JSON.stringify(data, null, 2);
+		    const filename = 'ideas_backup_' + new Date().toISOString().split('T')[0] + 		'.json';
+
+		    // Android WebView через мост
+		    if (window.Android && typeof Android.saveJson === 'function') {
+		        Android.saveJson(filename, dataStr);
+		        this.showToast('Данные отправлены на сохранение');
+		        return;
+		    }
+
+		    // Браузерный вариант
+		    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+		    const link = document.createElement('a');
+		    link.href = URL.createObjectURL(dataBlob);
+		    link.download = filename;
+		    link.click();
+		    this.showToast('Данные успешно экспортированы');
+		}
             
             // Импорт данных
-            importData(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    try {
-                        const data = JSON.parse(event.target.result);
-                        
-                        if (data.ideas && Array.isArray(data.ideas)) {
-                            this.appState.ideas = data.ideas;
-                        }
-                        
-                        if (data.categories && Array.isArray(data.categories)) {
-                            this.appState.categories = data.categories;
-                        }
-                        
-                        this.appState.saveToStorage();
-                        this.renderCategories();
-                        this.updateCategoryCounts();
-                        this.updateActiveArchivedCounts();
-                        this.updateCategorySelect();
-                        this.renderIdeas();
-                        
-                        this.showToast('Данные успешно импортированы');
-                    } catch (error) {
-                        this.showToast('Ошибка при импорте данных', 'error');
-                        console.error('Import error:', error);
-                    }
-                };
-                reader.readAsText(file);
-                
-                // Очистка поля ввода файла
-                e.target.value = '';
+            // Импорт данных c учетом Android WebView
+importData(e) {
+    // Android WebView через мост
+    if (window.Android && typeof Android.pickJson === 'function') {
+        // привязка уже сделана в init
+        Android.pickJson('IdeaApp_onJsonPicked');
+        return;
+    }
+
+    // Браузерный вариант
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        try {
+            const data = JSON.parse(event.target.result);
+            if (data.ideas && Array.isArray(data.ideas)) {
+                this.appState.ideas = data.ideas;
             }
-            
+            if (data.categories && Array.isArray(data.categories)) {
+                this.appState.categories = data.categories;
+            }
+            this.appState.saveToStorage();
+            this.renderCategories();
+            this.updateCategoryCounts();
+            this.updateActiveArchivedCounts();
+            this.updateCategorySelect();
+            this.renderIdeas();
+            this.showToast('Данные успешно импортированы');
+        } catch (error) {
+            this.showToast('Ошибка при импорте данных', 'error');
+            console.error('Import error:', error);
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+}
+
+// Колбэк для Android импорта
+// Важно стрелочная функция сохраняет this
+onJsonPicked = (text) => {
+    try {
+        const data = JSON.parse(text);
+        if (data.ideas && Array.isArray(data.ideas)) {
+            this.appState.ideas = data.ideas;
+        }
+        if (data.categories && Array.isArray(data.categories)) {
+            this.appState.categories = data.categories;
+        }
+        this.appState.saveToStorage();
+        this.renderCategories();
+        this.updateCategoryCounts();
+        this.updateActiveArchivedCounts();
+        this.updateCategorySelect();
+        this.renderIdeas();
+        this.showToast('Данные успешно импортированы');
+    } catch (error) {
+        this.showToast('Ошибка при импорте данных', 'error');
+        console.error('Import error:', error);
+    }
+};
+
+
+
             // Открытие просмотра изображения
             openImageViewer(imageSrc) {
                 this.viewerImage.src = imageSrc;
@@ -3324,6 +3362,10 @@
             // Восстанавливаем позицию FAB после инициализации
             uiManager.restoreFabPosition();
             
+	    window.IdeaApp_onJsonPicked = this.onJsonPicked;
+
+
+
             // Добавим глобальный обработчик для сброса флагов при фокусе окна
             window.addEventListener('focus', () => {
                 if (window.uiManager) {
