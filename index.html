@@ -6,6 +6,7 @@
     <title>Логер Идей</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         /* CSS переменные для управления цветовой схемой */
         :root {
@@ -565,11 +566,6 @@
             z-index: 1;
         }
         
-        /* Закрепленная карточка идеи */
-        .idea-card.pinned {
-            border-left: 4px solid var(--primary-color);
-        }
-        
         /* Эффект наведения на карточку идеи */
         .idea-card:hover {
             box-shadow: var(--shadow-lg);
@@ -693,14 +689,9 @@
             background-color: var(--secondary-background);
         }
         
-        /* Кнопка закрепления */
-        .pin-btn {
+        /* Кнопка поделиться */
+        .share-btn {
             color: var(--text-secondary);
-        }
-        
-        /* Закрепленная кнопка */
-        .pin-btn.pinned {
-            color: var(--primary-color);
         }
         
         /* Контент идеи */
@@ -1782,8 +1773,7 @@
                     image: idea.image || null,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
-                    archived: false,
-                    pinned: false
+                    archived: false
                 };
                 
                 this.appState.ideas.push(newIdea);
@@ -1817,18 +1807,6 @@
                 const idea = this.appState.ideas.find(idea => idea.id === id);
                 if (idea) {
                     idea.archived = !idea.archived;
-                    idea.updatedAt = new Date().toISOString();
-                    this.appState.saveToStorage();
-                    return idea;
-                }
-                return null;
-            }
-            
-            // Переключение закрепления идеи
-            togglePin(id) {
-                const idea = this.appState.ideas.find(idea => idea.id === id);
-                if (idea) {
-                    idea.pinned = !idea.pinned;
                     idea.updatedAt = new Date().toISOString();
                     this.appState.saveToStorage();
                     return idea;
@@ -2732,15 +2710,6 @@
                 }
             }
             
-            // Переключение закрепления идеи
-            togglePinIdea(ideaId) {
-                const idea = this.ideaManager.togglePin(ideaId);
-                if (idea) {
-                    this.renderIdeas();
-                    this.showToast(idea.pinned ? 'Идея закреплена' : 'Идея откреплена');
-                }
-            }
-            
             // Удаление идеи
             deleteIdea(ideaId) {
                 if (confirm('Вы уверены, что хотите удалить эту идею?')) {
@@ -2750,6 +2719,106 @@
                     this.renderIdeas();
                     this.showToast('Идея удалена');
                 }
+            }
+            
+            // Поделиться идеей
+            shareIdea(ideaId) {
+                const idea = this.appState.ideas.find(i => i.id === ideaId);
+                if (!idea) return;
+                
+                // Создаем временный элемент для захвата
+                const cardElement = document.createElement('div');
+                cardElement.style.position = 'absolute';
+                cardElement.style.left = '-9999px';
+                cardElement.style.width = '400px';
+                cardElement.style.backgroundColor = '#ffffff';
+                cardElement.style.borderRadius = '8px';
+                cardElement.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+                cardElement.style.padding = '20px';
+                cardElement.style.fontFamily = 'Inter, sans-serif';
+                
+                // Получаем категорию
+                const category = this.categoryManager.getCategoryById(idea.category);
+                const categoryName = category ? category.name : 'Без категории';
+                const categoryColor = category ? category.color : '#d1d5db';
+                
+                // Форматируем дату
+                const formattedDate = new Date(idea.createdAt).toLocaleDateString('ru-RU', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+                
+                // Создаем содержимое карточки
+                cardElement.innerHTML = `
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <div style="width: 12px; height: 12px; background-color: ${categoryColor}; border-radius: 50%; margin-right: 8px;"></div>
+                        <div style="font-size: 14px; color: #6b7280; font-weight: 500;">${categoryName}</div>
+                    </div>
+                    <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 10px; color: #111827;">${idea.title}</h2>
+                    <div style="font-size: 16px; line-height: 1.5; margin-bottom: 15px; color: #111827;">${idea.content}</div>
+                    ${idea.image ? `<img src="${idea.image}" style="max-width: 100%; border-radius: 6px; margin-bottom: 15px;">` : ''}
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 12px; color: #6b7280;">${formattedDate}</div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${(idea.tags || []).map(tag => 
+                                `<span style="font-size: 12px; padding: 4px 8px; border-radius: 9999px; background-color: #f3f4f6; color: #4b5563;">${tag}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; text-align: center;">
+                        Создано в Логере Идей
+                    </div>
+                `;
+                
+                // Добавляем элемент в DOM
+                document.body.appendChild(cardElement);
+                
+                // Используем html2canvas для создания изображения
+                html2canvas(cardElement, {
+                    scale: 2,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                }).then(canvas => {
+                    // Удаляем временный элемент
+                    document.body.removeChild(cardElement);
+                    
+                    // Конвертируем canvas в blob
+                    canvas.toBlob(blob => {
+                        // Создаем файл
+                        const file = new File([blob], `idea_${idea.id}.png`, { type: 'image/png' });
+                        
+                        // Проверяем поддержку Web Share API
+                        if (navigator.share && navigator.canShare({ files: [file] })) {
+                            // Используем Web Share API
+                            navigator.share({
+                                title: idea.title,
+                                text: idea.content,
+                                files: [file]
+                            }).then(() => {
+                                this.showToast('Идея успешно отправлена');
+                            }).catch(err => {
+                                console.error('Error sharing:', err);
+                                // Если пользователь отменил, ничего не делаем
+                            });
+                        } else {
+                            // Альтернатива - скачивание файла
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `idea_${idea.id}.png`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            this.showToast('Изображение идеи сохранено');
+                        }
+                    }, 'image/png');
+                }).catch(err => {
+                    console.error('Error generating image:', err);
+                    document.body.removeChild(cardElement);
+                    this.showToast('Ошибка при создании изображения', 'error');
+                });
             }
             
             // Открытие модального окна категории
@@ -2908,99 +2977,62 @@
             }
             
             // Экспорт данных
-		// Экспорт данных c учетом Android WebView
-		exportData() {
-		    const data = {
-		        ideas: this.appState.ideas,
-		        categories: this.appState.categories,
-		        exportDate: new Date().toISOString()
-		    };
-		
-		    const dataStr = JSON.stringify(data, null, 2);
-		    const filename = 'ideas_backup_' + new Date().toISOString().split('T')[0] + 		'.json';
-
-		    // Android WebView через мост
-		    if (window.Android && typeof Android.saveJson === 'function') {
-		        Android.saveJson(filename, dataStr);
-		        this.showToast('Данные отправлены на сохранение');
-		        return;
-		    }
-
-		    // Браузерный вариант
-		    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-		    const link = document.createElement('a');
-		    link.href = URL.createObjectURL(dataBlob);
-		    link.download = filename;
-		    link.click();
-		    this.showToast('Данные успешно экспортированы');
-		}
+            exportData() {
+                const data = {
+                    ideas: this.appState.ideas,
+                    categories: this.appState.categories,
+                    exportDate: new Date().toISOString()
+                };
+                
+                const dataStr = JSON.stringify(data, null, 2);
+                const filename = 'ideas_backup_' + new Date().toISOString().split('T')[0] + '.json';
+                
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = filename;
+                link.click();
+                
+                this.showToast('Данные успешно экспортированы');
+            }
             
             // Импорт данных
-            // Импорт данных c учетом Android WebView
-importData(e) {
-    // Android WebView через мост
-    if (window.Android && typeof Android.pickJson === 'function') {
-        // привязка уже сделана в init
-        Android.pickJson('IdeaApp_onJsonPicked');
-        return;
-    }
-
-    // Браузерный вариант
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-        try {
-            const data = JSON.parse(event.target.result);
-            if (data.ideas && Array.isArray(data.ideas)) {
-                this.appState.ideas = data.ideas;
+            importData(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        
+                        if (data.ideas && Array.isArray(data.ideas)) {
+                            this.appState.ideas = data.ideas;
+                        }
+                        
+                        if (data.categories && Array.isArray(data.categories)) {
+                            this.appState.categories = data.categories;
+                        }
+                        
+                        this.appState.saveToStorage();
+                        this.renderCategories();
+                        this.updateCategoryCounts();
+                        this.updateActiveArchivedCounts();
+                        this.updateCategorySelect();
+                        this.renderIdeas();
+                        
+                        this.showToast('Данные успешно импортированы');
+                    } catch (error) {
+                        this.showToast('Ошибка при импорте данных', 'error');
+                        console.error('Import error:', error);
+                    }
+                };
+                reader.readAsText(file);
+                
+                // Сбрасываем значение input, чтобы можно было выбрать тот же файл снова
+                e.target.value = '';
             }
-            if (data.categories && Array.isArray(data.categories)) {
-                this.appState.categories = data.categories;
-            }
-            this.appState.saveToStorage();
-            this.renderCategories();
-            this.updateCategoryCounts();
-            this.updateActiveArchivedCounts();
-            this.updateCategorySelect();
-            this.renderIdeas();
-            this.showToast('Данные успешно импортированы');
-        } catch (error) {
-            this.showToast('Ошибка при импорте данных', 'error');
-            console.error('Import error:', error);
-        }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-}
-
-// Колбэк для Android импорта
-// Важно стрелочная функция сохраняет this
-onJsonPicked = (text) => {
-    try {
-        const data = JSON.parse(text);
-        if (data.ideas && Array.isArray(data.ideas)) {
-            this.appState.ideas = data.ideas;
-        }
-        if (data.categories && Array.isArray(data.categories)) {
-            this.appState.categories = data.categories;
-        }
-        this.appState.saveToStorage();
-        this.renderCategories();
-        this.updateCategoryCounts();
-        this.updateActiveArchivedCounts();
-        this.updateCategorySelect();
-        this.renderIdeas();
-        this.showToast('Данные успешно импортированы');
-    } catch (error) {
-        this.showToast('Ошибка при импорте данных', 'error');
-        console.error('Import error:', error);
-    }
-};
-
-
-
+            
             // Открытие просмотра изображения
             openImageViewer(imageSrc) {
                 this.viewerImage.src = imageSrc;
@@ -3079,7 +3111,7 @@ onJsonPicked = (text) => {
                         });
                         
                         return `
-                            <div class="idea-card ${idea.pinned ? 'pinned' : ''}" data-id="${idea.id}" style="background-color: ${lightColor}; --category-color: ${categoryColor};">
+                            <div class="idea-card" data-id="${idea.id}" style="background-color: ${lightColor}; --category-color: ${categoryColor};">
                                 <div class="idea-content-wrapper">
                                     ${idea.image ? `
                                         <div class="idea-image-container" data-image="${idea.image}">
@@ -3108,8 +3140,8 @@ onJsonPicked = (text) => {
                                     </div>
                                 </div>
                                 <div class="idea-actions">
-                                    <button class="action-btn pin-btn ${idea.pinned ? 'pinned' : ''}" data-id="${idea.id}">
-                                        <i class="fas fa-thumbtack"></i>
+                                    <button class="action-btn share-btn" data-id="${idea.id}">
+                                        <i class="fas fa-share-alt"></i>
                                     </button>
                                     <button class="action-btn edit-btn" data-id="${idea.id}">
                                         <i class="fas fa-edit"></i>
@@ -3145,10 +3177,10 @@ onJsonPicked = (text) => {
                     }, 0);
                     
                     // Обработчики для кнопок действий
-                    document.querySelectorAll('.pin-btn').forEach(btn => {
+                    document.querySelectorAll('.share-btn').forEach(btn => {
                         btn.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            this.togglePinIdea(btn.dataset.id);
+                            this.shareIdea(btn.dataset.id);
                         });
                     });
                     
@@ -3362,10 +3394,6 @@ onJsonPicked = (text) => {
             // Восстанавливаем позицию FAB после инициализации
             uiManager.restoreFabPosition();
             
-	    window.IdeaApp_onJsonPicked = this.onJsonPicked;
-
-
-
             // Добавим глобальный обработчик для сброса флагов при фокусе окна
             window.addEventListener('focus', () => {
                 if (window.uiManager) {
