@@ -2565,7 +2565,11 @@
                         // Создаем canvas для масштабирования
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        
+
+                  	// е строки для улучшения качества
+			ctx.imageSmoothingEnabled = true;
+			ctx.imageSmoothingQuality = 'high';
+
                         // Вычисляем новые размеры с сохранением пропорций
                         let newWidth = img.width;
                         let newHeight = img.height;
@@ -2576,15 +2580,37 @@
                             newHeight = img.height * ratio;
                         }
                         
-                        canvas.width = newWidth;
-                        canvas.height = newHeight;
+                        canvas.width = newWidth * 2;
+                        canvas.height = newHeight * 2;
                         
                         // Рисуем изображение на canvas
-                        ctx.drawImage(img, 0, 0, newWidth, newHeight);
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         
-                        // Получаем dataURL с максимальным качеством (100%)
-                        const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
                         
+			// Создаем второй canvas для финального уменьшения
+			const finalCanvas = document.createElement('canvas');
+			const finalCtx = finalCanvas.getContext('2d');
+			finalCanvas.width = newWidth;
+			finalCanvas.height = newHeight;
+
+			// Добавьте эти две строки и для второго canvas
+			finalCtx.imageSmoothingEnabled = true;
+			finalCtx.imageSmoothingQuality = 'high';
+
+			// Уменьшаем изображение с высоким качеством
+			finalCtx.drawImage(canvas, 0, 0, newWidth, newHeight);
+
+
+
+
+			// Получаем dataURL с максимальным качеством (100%)
+                        //const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+                        
+			const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.92); 
+			// 92% качество для оптимального размера/качества
+				
+
+
                         // Сохраняем изображение
                         this.appState.currentImageData = dataUrl;
                         
