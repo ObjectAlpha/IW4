@@ -2,7 +2,7 @@
 
 # Логер Идей
 
-![Логер Идей](https://img.shields.io/badge/version-1.1.0-blue.svg) ![Логер Идей](https://img.shields.io/badge/license-MIT-green.svg)
+![Логер Идей](https://img.shields.io/badge/version-1.2.0-blue.svg) ![Логер Идей](https://img.shields.io/badge/license-MIT-green.svg)
 
 **Логер Идей** — это веб-приложение для записи, организации и управления идеями. Приложение позволяет создавать, редактировать, архивировать и делиться идеями, а также организовывать их по категориям и тегам.
 
